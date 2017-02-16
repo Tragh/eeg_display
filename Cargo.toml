@@ -1,0 +1,17 @@
+[package]
+name = "eeg_display"
+version = "0.1.0"
+authors = ["Tragh <mikemth@gmail.com>"]
+
+[dependencies]
+rand = "0.3.15"
+regex = "0.2"
+num = "0.1.36"
+rustfft = "1.0.1"
+find_folder = "0.3.0"
+glium = "0.16.0"
+
+[dependencies.conrod]
+version = "0.51.1"
+default-features=false
+features=["winit","glium"]
