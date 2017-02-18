@@ -4,6 +4,7 @@ extern crate num;
 mod support;
 #[macro_use] extern crate glium;
 
+extern crate portaudio;
 extern crate find_folder;
 extern crate rustfft;
 
@@ -15,14 +16,14 @@ mod city2d;
 pub mod waveformdrawer;
 use waveformdrawer::{WaveformDrawer,WaveformDrawerSettings};
 
-pub mod shared;
-use shared::{AppState, WaveData, Ticker};
+pub mod appstate;
+use appstate::{AppState, WaveData, Ticker, AppData};
 
 pub mod openbci_file;
 use openbci_file::{OpenBCIFile};
 
-pub mod glium_texdraw;
-use glium_texdraw::{GliumTexDraw};
+pub mod pastuff;
+
 
 
 
@@ -33,9 +34,9 @@ pub fn main() {
     println!("Building the window.");
     let display = glium::glutin::WindowBuilder::new()
         .with_dimensions(WIDTH, HEIGHT)
-        .with_title("Text Demo")
+        .with_title("STFT Viewer")
         .build_glium()
-        .unwrap();
+        .expect("Unable to create OpenGL Window.");
 
     println!("Constructing UI.");
     let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).theme(support::theme()).build();
@@ -43,10 +44,6 @@ pub fn main() {
 
 
     //OpenGL stuff###################################
-    //let image = image::load(std::io::Cursor::new(&include_bytes!("../tests/fixture/opengl.png")[..]),image::PNG).unwrap().to_rgba();
-    //let image_dimensions = image.dimensions();
-    //let image = glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(), image_dimensions);
-    let gliumtexdraw=GliumTexDraw::new(&display);
 
 
 
@@ -57,7 +54,10 @@ pub fn main() {
         show_file_widgets: true,
         file_selection: None,
         waveform_drawers: Vec::<WaveformDrawer>::new(),
-        wave_data: None,
+        app_data: std::sync::Arc::new(std::sync::Mutex::new(AppData{
+            data_source: appstate::DataSource::NoSource,
+            wave_data: None,
+            streaming_data: None})),
         ticker: Ticker::default()
     };
 
@@ -110,8 +110,9 @@ pub fn main() {
         let mut ticks;
         loop{
             ticks=app.ticker.ticks();
-            for wfd in &mut app.waveform_drawers {wfd.update_stft(ticks, &app.wave_data);}
+            for wfd in &mut app.waveform_drawers {wfd.update_stft(ticks, &app.app_data);}
             frame_rater.fps(ticks);
+            std::thread::sleep(std::time::Duration::from_millis(1));
             if frame_rater.elapsed_ms(ticks, 16) {break;}
         }
 
@@ -163,6 +164,7 @@ widget_ids!{
     struct Ids {
         canvas,
         button,
+        btn_useportaudio,
         file_navigator
     }
 }
@@ -197,8 +199,12 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
                     buffer: openbci_file.samples.clone(),
                     channels: openbci_file.channels,
                     sample_rate: 200,
+                    buffer_length: openbci_file.samples[0].len()
                 };
-                app.wave_data=Some(wave_data);
+                let app_data_arc=app.app_data.clone();
+                let mut app_data = app_data_arc.lock().unwrap();
+                app_data.wave_data = Some(wave_data);
+                app_data.data_source = appstate::DataSource::WavBuffer;
 
                 println!("Initialising waveform drawer.");
                 app.waveform_drawers.clear();
@@ -208,7 +214,7 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
                 app.waveform_drawers.push( WaveformDrawer::new( display,
                     WaveformDrawerSettings{
                             x: -300,
-                            y: -250*i as i32 - wfheight as i32/2 + ui.win_h as i32/2,
+                            y: -50 - 250*i as i32 - wfheight as i32/2 + ui.win_h as i32/2,
                             width: wfwidth,
                             height: wfheight,
                             milliseconds_per_pixel: 2.5,
@@ -223,6 +229,35 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
             }
 
         }
+
+        for _press in widget::Button::new()
+            .label("Use Portaudio mic for input.")
+            .x_y(660.0,-190.0)
+            .w_h(400.0, 50.0)
+            .set(ids.btn_useportaudio, ui)
+            {
+
+                pastuff::pa_read_from_mic(app);
+
+                println!("Initialising waveform drawer.");
+                app.waveform_drawers.clear();
+                let wfwidth: u32=1320;
+                let wfheight: u32=800;
+                app.waveform_drawers.push( WaveformDrawer::new( display,
+                    WaveformDrawerSettings{
+                            x: -300,
+                            y: -50 as i32 - wfheight as i32/2 + ui.win_h as i32/2,
+                            width: wfwidth,
+                            height: wfheight,
+                            milliseconds_per_pixel: 5.0,
+                            dtft_samples: 1600,
+                            channel: 0}));
+
+                let ticks=app.ticker.ticks();
+                for wfd in &mut app.waveform_drawers{
+                    wfd.start(ticks);
+                }
+            }
 
 
     let path = std::path::Path::new("data/");

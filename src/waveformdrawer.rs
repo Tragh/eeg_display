@@ -1,6 +1,7 @@
 use std;
 use num;
-use shared::{AppState, WaveData, Ticker};
+use appstate;
+use appstate::{AppState, WaveData, Ticker, AppData};
 use rustfft;
 
 use glium;
@@ -81,19 +82,19 @@ impl<'a> WaveformDrawer<'a> {
 
 
 
-    pub fn update_stft(&mut self, ticks: u64, wave_data: &Option<WaveData>){
+    pub fn update_stft(&mut self, ticks: u64, app_data: &std::sync::Arc<std::sync::Mutex<AppData>>){
         if !self.running {return;}
         let ticks = ticks-self.start_ticks;
         let settings=&mut self.settings;
 
-        { //begin scope for data mutex
-            let data = wave_data.as_ref().unwrap(); //acquire a lock on the shared data
-            let buffer = &data.buffer[settings.channel as usize];
-            let sample_point = ticks as u32 * data.sample_rate/1000; //what point (index) in the data are we at
+        {
+            let data_arc = app_data.clone();
+            let mut data = data_arc.lock().unwrap();
+            let sample_point = ticks as u32 * data.get_sample_rate().unwrap()/1000; //what point (index) in the data are we at
 
 
             //if we're too near the begining to do a DTFT or we're past the end of the data then we draw our texture and return
-            if sample_point as usize >= buffer.len() {
+            if sample_point as usize >= data.buffer_length().unwrap() {
                 return;
             }
 
@@ -109,8 +110,9 @@ impl<'a> WaveformDrawer<'a> {
             if needed_pixels != 0 {
                 let mut signal = vec![num::Complex{re: 0.0, im: 0.0}; dtft_len as usize];
                 let mut spectrum = signal.clone();
+                let slice = data.get_slice(settings.channel as usize, (sample_point-dtft_len) as usize,(sample_point) as usize);
                 for i in (0)..dtft_len {
-                    signal[i as usize].re=buffer[(sample_point-dtft_len+i) as usize];
+                    signal[i as usize].re=slice[i as usize];
                 }
                 let mut fft = rustfft::FFT::new(dtft_len as usize, false);
                 fft.process(&signal, &mut spectrum);
