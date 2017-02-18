@@ -1,13 +1,11 @@
 use std;
 use num;
-use appstate;
-use appstate::{AppState, WaveData, Ticker, AppData, FilterData};
+use appstate::{AppData, FilterData};
 use rustfft;
 
 use glium;
 use glium::{Surface};
 
-use city2d;
 use city2d::City2D;
 
 #[allow(dead_code)]
@@ -41,7 +39,8 @@ pub struct WaveformDrawerSettings {
     pub width: u32, //width of the display
     pub height: u32,    //height of the display
     pub milliseconds_per_pixel: f32,  //how much data to display, in ms
-    pub dtft_samples: u32, //how many ms to take for fft window
+    pub dtft_samples: u32, //how many samples to take for the ftft window
+    pub dtft_display_samples: u32, //how many of the above samples to display (cuts off high frequency samples)
     pub channel: u32, //which chanel to read from
 }
 
@@ -49,7 +48,7 @@ pub struct WaveformDrawerSettings {
 pub struct WaveformDrawer<'a> {
     settings: WaveformDrawerSettings,
     rendered_ticks: u64,
-    image: Option<City2D>,
+//    image: Option<City2D>,
     vstrips: Vec<VStrip>,
     texture: glium::texture::Texture2d,
     display: &'a glium::backend::glutin_backend::GlutinFacade,
@@ -62,7 +61,7 @@ impl<'a> WaveformDrawer<'a> {
         let texture = glium::texture::Texture2d::empty(display,settings.width, settings.height).expect("WaveformDrawer unable to create initial texture.");
         texture.as_surface().clear_color(0.0,0.0,0.0,1.0);
         WaveformDrawer{
-            image: Some(City2D::new(settings.width,settings.height)),
+            //image: Some(City2D::new(settings.width,settings.dtft_display_samples)),
             texture: texture,
             settings: settings,
             rendered_ticks: 0,
@@ -100,6 +99,7 @@ impl<'a> WaveformDrawer<'a> {
 
 
             let dtft_len = std::cmp::min(sample_point, settings.dtft_samples); //how many points to sample for the DTFT
+            let dtft_display_len = std::cmp::min(sample_point, settings.dtft_display_samples); //how many points to sample for the DTFT
 
             //how many pixels (width) these samples will take up
             let needed_pixels=((ticks - self.rendered_ticks) as f32 / settings.milliseconds_per_pixel) as u32;
@@ -118,21 +118,21 @@ impl<'a> WaveformDrawer<'a> {
                 fft.process(&signal, &mut spectrum);
 
                 let mut mean_norm : f32 = 0.0;
-                for i in 0..dtft_len/2 {
+                for i in 0..dtft_display_len {
                     let norm=spectrum[i as usize].norm();
                     mean_norm += norm;
                 }
 
-                mean_norm /= dtft_len as f32;
+                mean_norm /= (dtft_display_len/2) as f32;
 
                 let mut vstrip=VStrip::new(settings.height,needed_pixels);
-                for i in 0..dtft_len/2 {
-                    let norm_spec_val = if fd.amp==0.0 {spectrum[i as usize]/mean_norm} else {spectrum[i as usize]*fd.amp.exp()};
+                for i in 0..dtft_display_len {
+                    let norm_spec_val = if fd.amp_manual {spectrum[i as usize]*fd.amp.exp()} else {spectrum[i as usize]/mean_norm};
                     //let norm_spec_val=spectrum[i as usize]/mean_norm;
 
                     let ired=std::cmp::min(   ((norm_spec_val*fd.red.0).norm().atan()*fd.red.1)   as u64,255);
                     let igre=std::cmp::min(   ((((norm_spec_val.norm()*fd.green.0)+2.718).ln()-1.0)*fd.green.1)   as u64,255);
-                    let iblu=std::cmp::min(   (mean_norm*fd.blue.0*fd.blue.1.exp())   as u64,255);
+                    let iblu=std::cmp::min(   (mean_norm*fd.blue.1.exp())   as u64,fd.blue.0 as u64);
 
                     vstrip.write_pixel(i, ired as u8, igre as u8, iblu as u8);
                 }
@@ -151,17 +151,17 @@ impl<'a> WaveformDrawer<'a> {
         if !self.running {return;}
         if self.vstrips.len()!=0 {
 
-            let wfwidth=self.settings.width;
-            let wfheight=self.settings.height;
+            let texture_width=self.settings.width;
+            let texture_height=self.settings.dtft_display_samples;
 
             //the section below glues together all the vstrips to create the right hand side of the graph
             let mut width = 0;
             for vstrip in &self.vstrips {width+=vstrip.pixels;}
-            let mut image=City2D::new(width, wfheight);
+            let mut image=City2D::new(width, texture_height);
 
             let mut x: i32 = 0;
             for vstrip in &self.vstrips{
-                for i in 0..wfheight as i32 {
+                for i in 0..texture_height as i32 {
                     image.hbar(x, i, vstrip.pixels,
                         vstrip.strip[(i*4) as usize],
                         vstrip.strip[(i*4+1) as usize],
@@ -183,7 +183,7 @@ impl<'a> WaveformDrawer<'a> {
                 let target_width = self.texture.get_width();
                 let target_height = self.texture.get_height().unwrap();
 
-                let new_waveform_texture: glium::texture::Texture2d = glium::texture::Texture2d::empty(self.display,wfwidth, wfheight).unwrap();
+                let new_waveform_texture: glium::texture::Texture2d = glium::texture::Texture2d::empty(self.display, texture_width, texture_height).unwrap();
                 {
                     let sfb = new_waveform_texture.as_surface();
                     sfb.blit_from_simple_framebuffer(&self.texture.as_surface(),
@@ -220,6 +220,7 @@ impl<'a> WaveformDrawer<'a> {
         let tex=&self.texture;
         let width = tex.get_width();
         let height = tex.get_height().unwrap();
+        let target_height = self.settings.height;
         let sfb = tex.as_surface();
         target.blit_from_simple_framebuffer(&sfb,
             &glium::Rect{
@@ -232,7 +233,7 @@ impl<'a> WaveformDrawer<'a> {
                 left: (self.settings.x - self.settings.width as i32 /2 + win_w as i32/2) as u32,
                 bottom: (self.settings.y - self.settings.height as i32/2 + win_h as i32/2) as u32,
                 width: width as i32,
-                height: height as i32},
-            glium::uniforms::MagnifySamplerFilter::Nearest);
+                height: target_height as i32},
+            glium::uniforms::MagnifySamplerFilter::Linear);
     }
 }

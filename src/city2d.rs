@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use std;
 
 #[derive(Clone)]
 pub struct City2D {

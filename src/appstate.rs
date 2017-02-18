@@ -1,9 +1,7 @@
 use std;
 
-use waveformdrawer;
 use waveformdrawer::{WaveformDrawer};
 
-use portaudio;
 
 pub struct Ticker {
     timer: std::time::SystemTime
@@ -135,22 +133,24 @@ pub struct FilterData{
     pub amp: f32,
     pub amp_min: f32,
     pub amp_max: f32,
+    pub amp_manual: bool,
 }
 impl Default for FilterData{
     fn default()->FilterData{
         FilterData{
              red: (1.0, 150.0),
-             min_red: (0.5, 50.0),
-             max_red: (15.0,250.0 ),
+             min_red: (0.1, 50.0),
+             max_red: (4.0,250.0 ),
              green: (1.0, 50.0),
-             min_green: (0.5, 10.0),
-             max_green: (10.0, 100.0),
-             blue: (0.1, 1.0),
-             min_blue: (0.01, 0.0),
-             max_blue: (0.5, 8.0),
+             min_green: (0.1, 10.0),
+             max_green: (4.0, 100.0),
+             blue: (127.0, -3.0),
+             min_blue: (0.0, -4.0),
+             max_blue: (255.0, 8.0),
              amp: 0.0,
-             amp_min: 0.0,
-             amp_max: 5.0
+             amp_min: -10.0,
+             amp_max: 5.0,
+             amp_manual: false,
         }
     }
 }

@@ -9,7 +9,6 @@ extern crate find_folder;
 extern crate rustfft;
 
 use glium::{DisplayBuild, Surface};
-use glium::backend::glutin_backend::GlutinFacade;
 
 mod city2d;
 
@@ -123,8 +122,6 @@ pub fn main() {
 
         let win_w : f64 = ui.win_w.clone();
         let win_h: f64 = ui.win_h.clone();
-        let wx = |d: f64|->f64{d/win_w*2.0};
-        let wy = |d: f64|->f64{d/win_h*2.0};
 
 
         set_ui(ui.set_widgets(), &ids, &display, &mut app);
@@ -172,16 +169,13 @@ widget_ids!{
         red_xy_pad,
         green_xy_pad,
         blue_xy_pad,
-        number_dialer
+        sldier_amplification,
+        toggle_manamp,
     }
 }
 fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::backend::glutin_backend::GlutinFacade, app: &mut AppState<'b>){
     #![allow(unused_imports)]
     use conrod::{color, widget, Colorable, Labelable, Positionable, Scalar, Sizeable, Widget};
-    let win_w = ui.win_w;
-    let win_h = ui.win_h;
-    let dx = |d: f64|->f64{d*win_w/2.0};
-    let dy = |d: f64|->f64{d*win_h/2.0};
     let path = std::path::Path::new("data/");
 
 
@@ -231,6 +225,7 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
                                     height: wfheight,
                                     milliseconds_per_pixel: 2.5,
                                     dtft_samples: 384,
+                                    dtft_display_samples: 192,
                                     channel: i}))
                         }
 
@@ -255,7 +250,7 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
                     println!("Initialising waveform drawer.");
                     app.waveform_drawers.clear();
                     let wfwidth: u32=1320;
-                    let wfheight: u32=400;
+                    let wfheight: u32=900;
                     app.waveform_drawers.push( WaveformDrawer::new( display,
                         WaveformDrawerSettings{
                                 x: -300,
@@ -263,7 +258,8 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
                                 width: wfwidth,
                                 height: wfheight,
                                 milliseconds_per_pixel: 5.0,
-                                dtft_samples: 800,
+                                dtft_samples: 1200,
+                                dtft_display_samples: 300,
                                 channel: 0}));
 
                     let ticks=app.ticker.ticks();
@@ -330,13 +326,24 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
                 .set(ids.blue_xy_pad, ui)
                 {fd.blue = (x, y);}
 
-            for value in widget::Slider::new(fd.amp,fd.amp_min,fd.amp_max)
-                .y(-350.0)
+            for manamp in widget::Toggle::new(fd.amp_manual)
+                .label("Manual Amp")
+                .label_color(if fd.amp_manual { conrod::color::WHITE } else { conrod::color::LIGHT_CHARCOAL })
                 .align_middle_x_of(ids.settings_canvas)
+                .y(-350.0)
                 .w_h(300.0, 40.0)
-                .label("Amplification")
-                .set(ids.number_dialer, ui)
-                {fd.amp=value;}
+                .set(ids.toggle_manamp, ui)
+            {fd.amp_manual=manamp;}
+
+            if fd.amp_manual {
+                for value in widget::Slider::new(fd.amp,fd.amp_min,fd.amp_max)
+                    .y(-390.0)
+                    .align_middle_x_of(ids.settings_canvas)
+                    .w_h(300.0, 40.0)
+                    .label("Amplification")
+                    .set(ids.sldier_amplification, ui)
+                    {fd.amp=value;}
+            }
 
         }
         _=>()

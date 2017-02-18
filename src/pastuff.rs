@@ -3,7 +3,7 @@ use std;
 use portaudio as pa;
 
 use appstate;
-use appstate::{AppState, WaveData, Ticker, AppData, StreamingData};
+use appstate::{AppState, StreamingData};
 
 const PA_SAMPLE_RATE: f64 = 44_100.0;
 const PA_FRAMES: u32 = 256;
@@ -11,7 +11,7 @@ const PA_CHANNELS: i32 = 1;
 const PA_INTERLEAVED: bool = true;
 
 
-pub fn pa_read_from_mic<'a>(app: &mut AppState) -> Result<(), pa::Error>{
+pub fn pa_read_from_mic<'a>(app: &mut AppState) {
 
 
 
@@ -92,5 +92,4 @@ pub fn pa_read_from_mic<'a>(app: &mut AppState) -> Result<(), pa::Error>{
 
     std::thread::sleep(std::time::Duration::from_millis(100)); //give the PA thread 100ms headstart
 
-    return Ok(());
 }
