@@ -101,7 +101,7 @@ impl AppData{
             }
             let ib = ib - sd.frames_lag;
             let ia = ia - sd.frames_lag;
-            println!("Reading from location {}", ib);
+        //    println!("Reading from location {}", ib);
             return &sd.deque[ia..ib];
         }
 

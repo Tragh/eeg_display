@@ -13,35 +13,32 @@ const PA_INTERLEAVED: bool = true;
 
 pub fn pa_read_from_mic<'a>(app: &mut AppState) -> Result<(), pa::Error>{
 
-    //Used to make sure the PA thread has progressed past the
-    //initial setup before we continue with the main thread :-)
-    let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
-    let barrier2=barrier.clone();
+
+
+    { //write stuff into the appstate
+        //let mut audio_dequeue: std::collections::VecDeque<f32> = std::collections::VecDeque::<f32>::new();
+        let audio_dequeue: Vec<f32> = Vec::<f32>::new();
+        let streaming_data = StreamingData {
+            deque: audio_dequeue,
+            channels: PA_CHANNELS as u32,
+            sample_rate: PA_SAMPLE_RATE as u32,
+            samples_written: 0,
+            frames_lag: 0,
+            acceptable_frames_lag: 512
+        };
+
+        let mut app_data = app.app_data.lock().unwrap();
+        app_data.streaming_data = Some(streaming_data);
+        app_data.data_source = appstate::DataSource::PortAudio;
+        println!("DataSource is now PortAudio.");
+    }
+
 
     let closure_data=app.app_data.clone();
-    let closure_data2=app.app_data.clone();
     std::thread::spawn(move || {
 
         let pa = pa::PortAudio::new().expect("PortAudio Error when starting.");
 
-        { //write stuff into the appstate
-            //let mut audio_dequeue: std::collections::VecDeque<f32> = std::collections::VecDeque::<f32>::new();
-            let mut audio_dequeue: Vec<f32> = Vec::<f32>::new();
-            let mut streaming_data = StreamingData {
-                deque: audio_dequeue,
-                channels: PA_CHANNELS as u32,
-                sample_rate: PA_SAMPLE_RATE as u32,
-                samples_written: 0,
-                frames_lag: 0,
-                acceptable_frames_lag: 512
-            };
-
-            let app_data_arc = closure_data;
-            let mut app_data = app_data_arc.lock().unwrap();
-            app_data.streaming_data = Some(streaming_data);
-            app_data.data_source = appstate::DataSource::PortAudio;
-            println!("DataSource is now PortAudio.");
-        }
 
 
     //    println!("PortAudio:");
@@ -69,7 +66,7 @@ pub fn pa_read_from_mic<'a>(app: &mut AppState) -> Result<(), pa::Error>{
 
             assert!(frames == PA_FRAMES as usize);
 
-            let mut app_data = closure_data2.lock().unwrap();
+            let mut app_data = closure_data.lock().unwrap();
             app_data.streaming_data.as_mut().unwrap().samples_written += frames;
             let ref mut audio_dequeue = app_data.streaming_data.as_mut().unwrap().deque;
             // Put the input on the Deque
@@ -83,15 +80,16 @@ pub fn pa_read_from_mic<'a>(app: &mut AppState) -> Result<(), pa::Error>{
         let mut stream = pa.open_non_blocking_stream(in_settings, callback).expect("PortAudio Error");
         stream.start().expect("PortAudio Error");
 
-        barrier2.wait();
         'pa_main:loop{
-            std::thread::sleep(std::time::Duration::from_millis(1000));
+            while true == stream.is_active().expect("Stream Failed") {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            println!("Unepected portaudio steam closed.");
         }
 
-        stream.stop().expect("PortAudio Error");
+        //stream.stop().expect("PortAudio Error");
     });
 
-    barrier.wait();
     std::thread::sleep(std::time::Duration::from_millis(100)); //give the PA thread 100ms headstart
 
     return Ok(());
