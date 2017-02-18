@@ -17,7 +17,7 @@ pub mod waveformdrawer;
 use waveformdrawer::{WaveformDrawer,WaveformDrawerSettings};
 
 pub mod appstate;
-use appstate::{AppState, WaveData, Ticker, AppData};
+use appstate::{AppState, WaveData, Ticker, AppData, GuiData, GuiDisplay, FilterData};
 
 pub mod openbci_file;
 use openbci_file::{OpenBCIFile};
@@ -51,8 +51,10 @@ pub fn main() {
     println!("Initialising internal data.");
 
     let mut app = AppState{
-        show_file_widgets: true,
-        file_selection: None,
+        filter_data: FilterData::default(),
+        gui_data: GuiData{
+            gui_display: GuiDisplay::FileOpen,
+            file_selection: None},
         waveform_drawers: Vec::<WaveformDrawer>::new(),
         app_data: std::sync::Arc::new(std::sync::Mutex::new(AppData{
             data_source: appstate::DataSource::NoSource,
@@ -110,7 +112,7 @@ pub fn main() {
         let mut ticks;
         loop{
             ticks=app.ticker.ticks();
-            for wfd in &mut app.waveform_drawers {wfd.update_stft(ticks, &app.app_data);}
+            for wfd in &mut app.waveform_drawers {wfd.update_stft(ticks, &app.app_data, &app.filter_data);}
             frame_rater.fps(ticks);
             std::thread::sleep(std::time::Duration::from_millis(1));
             if frame_rater.elapsed_ms(ticks, 16) {break;}
@@ -165,7 +167,12 @@ widget_ids!{
         canvas,
         button,
         btn_useportaudio,
-        file_navigator
+        file_navigator,
+        settings_canvas,
+        red_xy_pad,
+        green_xy_pad,
+        blue_xy_pad,
+        number_dialer
     }
 }
 fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::backend::glutin_backend::GlutinFacade, app: &mut AppState<'b>){
@@ -175,110 +182,165 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
     let win_h = ui.win_h;
     let dx = |d: f64|->f64{d*win_w/2.0};
     let dy = |d: f64|->f64{d*win_h/2.0};
-
-    widget::Canvas::new()
-        .color(conrod::color::DARK_CHARCOAL)
-        .x_y(660.0,200.0)
-        .w_h(600.0,600.0)
-        .set(ids.canvas, ui);
-
-    for _press in widget::Button::new()
-        .label("Open File")
-        .x_y(660.0,-130.0)
-        .w_h(400.0, 50.0)
-        .set(ids.button, ui)
-        {
-            println!("Pressed!");
-            println!("{:?}", app.file_selection);
-
-            if app.file_selection.is_some() {
-                // ## load OPENBCI file
-                println!("Reading OpenBCI data file.");
-                let openbci_file=OpenBCIFile::new(app.file_selection.take().unwrap().to_str().unwrap());
-                let wave_data = WaveData{
-                    buffer: openbci_file.samples.clone(),
-                    channels: openbci_file.channels,
-                    sample_rate: 200,
-                    buffer_length: openbci_file.samples[0].len()
-                };
-                let app_data_arc=app.app_data.clone();
-                let mut app_data = app_data_arc.lock().unwrap();
-                app_data.wave_data = Some(wave_data);
-                app_data.data_source = appstate::DataSource::WavBuffer;
-
-                println!("Initialising waveform drawer.");
-                app.waveform_drawers.clear();
-                let wfwidth: u32=1320;
-                let wfheight: u32=192;
-                for i in 0..openbci_file.channels{
-                app.waveform_drawers.push( WaveformDrawer::new( display,
-                    WaveformDrawerSettings{
-                            x: -300,
-                            y: -50 - 250*i as i32 - wfheight as i32/2 + ui.win_h as i32/2,
-                            width: wfwidth,
-                            height: wfheight,
-                            milliseconds_per_pixel: 2.5,
-                            dtft_samples: 384,
-                            channel: i}))
-                }
-
-                let ticks=app.ticker.ticks();
-                for wfd in &mut app.waveform_drawers{
-                    wfd.start(ticks);
-                }
-            }
-
-        }
-
-        for _press in widget::Button::new()
-            .label("Use Portaudio mic for input.")
-            .x_y(660.0,-190.0)
-            .w_h(400.0, 50.0)
-            .set(ids.btn_useportaudio, ui)
-            {
-
-                pastuff::pa_read_from_mic(app);
-
-                println!("Initialising waveform drawer.");
-                app.waveform_drawers.clear();
-                let wfwidth: u32=1320;
-                let wfheight: u32=800;
-                app.waveform_drawers.push( WaveformDrawer::new( display,
-                    WaveformDrawerSettings{
-                            x: -300,
-                            y: -50 as i32 - wfheight as i32/2 + ui.win_h as i32/2,
-                            width: wfwidth,
-                            height: wfheight,
-                            milliseconds_per_pixel: 5.0,
-                            dtft_samples: 1600,
-                            channel: 0}));
-
-                let ticks=app.ticker.ticks();
-                for wfd in &mut app.waveform_drawers{
-                    wfd.start(ticks);
-                }
-            }
-
-
     let path = std::path::Path::new("data/");
-    // Navigate the conrod directory only showing `.rs` and `.toml` files.
-    for event in widget::FileNavigator::new(&path,conrod::widget::file_navigator::Types::All)
-        .color(conrod::color::LIGHT_BLUE)
-        .font_size(16)
-        .wh_of(ids.canvas)
-        .middle_of(ids.canvas)
-        //.show_hidden_files(true)  // Use this to show hidden files
-        .set(ids.file_navigator, ui)
-        {
-            use conrod::widget::file_navigator::Event;
-            match event {
-                Event::ChangeSelection(mut paths)=>
-                    app.file_selection= if paths.len()>0 {Some(paths.pop().unwrap())} else {None},
-                    _ => ()
-            }
-            //println!("{:?}", event);
-        }
 
+
+    match app.gui_data.gui_display {
+        GuiDisplay::FileOpen =>
+        {
+            widget::Canvas::new()
+                .color(conrod::color::DARK_CHARCOAL)
+                .x_y(660.0,200.0)
+                .w_h(600.0,600.0)
+                .set(ids.canvas, ui);
+
+            for _press in widget::Button::new()
+                .label("Open File")
+                .x_y(660.0,-130.0)
+                .w_h(400.0, 50.0)
+                .set(ids.button, ui)
+                {
+                    println!("Pressed!");
+                    println!("{:?}", app.gui_data.file_selection);
+
+                    if app.gui_data.file_selection.is_some() {
+                        // ## load OPENBCI file
+                        println!("Reading OpenBCI data file.");
+                        let openbci_file=OpenBCIFile::new(app.gui_data.file_selection.take().unwrap().to_str().unwrap());
+                        let wave_data = WaveData{
+                            buffer: openbci_file.samples.clone(),
+                            channels: openbci_file.channels,
+                            sample_rate: 200,
+                            buffer_length: openbci_file.samples[0].len()
+                        };
+                        let app_data_arc=app.app_data.clone();
+                        let mut app_data = app_data_arc.lock().unwrap();
+                        app_data.wave_data = Some(wave_data);
+                        app_data.data_source = appstate::DataSource::WavBuffer;
+
+                        println!("Initialising waveform drawer.");
+                        app.waveform_drawers.clear();
+                        let wfwidth: u32=1320;
+                        let wfheight: u32=192;
+                        for i in 0..openbci_file.channels{
+                        app.waveform_drawers.push( WaveformDrawer::new( display,
+                            WaveformDrawerSettings{
+                                    x: -300,
+                                    y: -50 - 250*i as i32 - wfheight as i32/2 + ui.win_h as i32/2,
+                                    width: wfwidth,
+                                    height: wfheight,
+                                    milliseconds_per_pixel: 2.5,
+                                    dtft_samples: 384,
+                                    channel: i}))
+                        }
+
+                        let ticks=app.ticker.ticks();
+                        for wfd in &mut app.waveform_drawers{
+                            wfd.start(ticks);
+                        }
+                        app.gui_data.gui_display=GuiDisplay::FilterOptions;
+                    }
+
+                }
+
+            for _press in widget::Button::new()
+                .label("Use Portaudio mic for input.")
+                .x_y(660.0,-190.0)
+                .w_h(400.0, 50.0)
+                .set(ids.btn_useportaudio, ui)
+                {
+
+                    pastuff::pa_read_from_mic(app);
+
+                    println!("Initialising waveform drawer.");
+                    app.waveform_drawers.clear();
+                    let wfwidth: u32=1320;
+                    let wfheight: u32=400;
+                    app.waveform_drawers.push( WaveformDrawer::new( display,
+                        WaveformDrawerSettings{
+                                x: -300,
+                                y: -50 as i32 - wfheight as i32/2 + ui.win_h as i32/2,
+                                width: wfwidth,
+                                height: wfheight,
+                                milliseconds_per_pixel: 5.0,
+                                dtft_samples: 800,
+                                channel: 0}));
+
+                    let ticks=app.ticker.ticks();
+                    for wfd in &mut app.waveform_drawers{
+                        wfd.start(ticks);
+                    app.gui_data.gui_display=GuiDisplay::FilterOptions;
+                    }
+                }
+
+            // Navigate the conrod directory only showing `.rs` and `.toml` files.
+            for event in widget::FileNavigator::new(&path,conrod::widget::file_navigator::Types::All)
+                .color(conrod::color::LIGHT_BLUE)
+                .font_size(16)
+                .wh_of(ids.canvas)
+                .middle_of(ids.canvas)
+                //.show_hidden_files(true)  // Use this to show hidden files
+                .set(ids.file_navigator, ui)
+                {
+                    use conrod::widget::file_navigator::Event;
+                    match event {
+                        Event::ChangeSelection(mut paths)=>
+                            app.gui_data.file_selection= if paths.len()>0 {Some(paths.pop().unwrap())} else {None},
+                            _ => ()
+                    }
+                    //println!("{:?}", event);
+                }
+        }
+        GuiDisplay::FilterOptions =>
+        {
+            widget::Canvas::new()
+                .color(conrod::color::DARK_CHARCOAL)
+                .x_y(660.0,000.0)
+                .w_h(600.0,1000.0)
+                .set(ids.settings_canvas, ui);
+            let ref mut fd = app.filter_data;
+
+            for (x, y) in widget::XYPad::new(fd.red.0, fd.min_red.0, fd.max_red.0,
+                                                fd.red.1, fd.min_red.1, fd.max_red.1)
+                .label("Red Channel")
+                .w_h(200.0,200.0)
+                .y(300.0)
+                .align_middle_x_of(ids.settings_canvas)
+                .parent(ids.settings_canvas)
+                .set(ids.red_xy_pad, ui)
+                {fd.red = (x, y);}
+
+            for (x, y) in widget::XYPad::new(fd.green.0, fd.min_green.0, fd.max_green.0,
+                                                fd.green.1, fd.min_green.1, fd.max_green.1)
+                .label("Green Channel")
+                .w_h(200.0,200.0)
+                .y(50.0)
+                .align_middle_x_of(ids.settings_canvas)
+                .parent(ids.settings_canvas)
+                .set(ids.green_xy_pad, ui)
+                {fd.green = (x, y);}
+
+            for (x, y) in widget::XYPad::new(fd.blue.0, fd.min_blue.0, fd.max_blue.0,
+                                                fd.blue.1, fd.min_blue.1, fd.max_blue.1)
+                .label("Blue Channel")
+                .w_h(200.0,200.0)
+                .y(-200.0)
+                .align_middle_x_of(ids.settings_canvas)
+                .parent(ids.settings_canvas)
+                .set(ids.blue_xy_pad, ui)
+                {fd.blue = (x, y);}
+
+            for value in widget::Slider::new(fd.amp,fd.amp_min,fd.amp_max)
+                .y(-350.0)
+                .align_middle_x_of(ids.settings_canvas)
+                .w_h(300.0, 40.0)
+                .label("Amplification")
+                .set(ids.number_dialer, ui)
+                {fd.amp=value;}
+
+        }
+        _=>()
+    }
 
 
 }

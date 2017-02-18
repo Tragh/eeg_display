@@ -1,7 +1,7 @@
 use std;
 use num;
 use appstate;
-use appstate::{AppState, WaveData, Ticker, AppData};
+use appstate::{AppState, WaveData, Ticker, AppData, FilterData};
 use rustfft;
 
 use glium;
@@ -82,7 +82,7 @@ impl<'a> WaveformDrawer<'a> {
 
 
 
-    pub fn update_stft(&mut self, ticks: u64, app_data: &std::sync::Arc<std::sync::Mutex<AppData>>){
+    pub fn update_stft(&mut self, ticks: u64, app_data: &std::sync::Arc<std::sync::Mutex<AppData>>, fd: &FilterData){
         if !self.running {return;}
         let ticks = ticks-self.start_ticks;
         let settings=&mut self.settings;
@@ -127,11 +127,12 @@ impl<'a> WaveformDrawer<'a> {
 
                 let mut vstrip=VStrip::new(settings.height,needed_pixels);
                 for i in 0..dtft_len/2 {
-                    let norm_spec_val=spectrum[i as usize]/mean_norm;
+                    let norm_spec_val = if fd.amp==0.0 {spectrum[i as usize]/mean_norm} else {spectrum[i as usize]*fd.amp.exp()};
+                    //let norm_spec_val=spectrum[i as usize]/mean_norm;
 
-                    let ired=norm_spec_val.norm().atan()*150.0;
-                    let igre=((norm_spec_val.norm()+2.718).ln()-1.0)*50.0;
-                    let iblu=std::cmp::min((mean_norm/10.0) as u64,255);
+                    let ired=std::cmp::min(   ((norm_spec_val*fd.red.0).norm().atan()*fd.red.1)   as u64,255);
+                    let igre=std::cmp::min(   ((((norm_spec_val.norm()*fd.green.0)+2.718).ln()-1.0)*fd.green.1)   as u64,255);
+                    let iblu=std::cmp::min(   (mean_norm*fd.blue.0*fd.blue.1.exp())   as u64,255);
 
                     vstrip.write_pixel(i, ired as u8, igre as u8, iblu as u8);
                 }
