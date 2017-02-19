@@ -6,7 +6,7 @@ use appstate;
 use appstate::{AppState, StreamingData};
 
 const PA_SAMPLE_RATE: f64 = 44_100.0;
-const PA_FRAMES: u32 = 4096;
+const PA_FRAMES: u32 = 1024;
 const PA_CHANNELS: i32 = 1;
 const PA_INTERLEAVED: bool = true;
 

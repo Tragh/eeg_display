@@ -1,6 +1,6 @@
 [root]
-name = "eeg_display"
-version = "0.1.0"
+name = "spectrum_analyser"
+version = "0.1.1"
 dependencies = [
  "conrod 0.51.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "find_folder 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
