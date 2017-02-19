@@ -86,17 +86,17 @@ pub fn pa_read_from_mic<'a>(app: &mut AppState) {
                 app_data.streaming_data.as_mut().unwrap().samples_written += in_frames as usize;
                 let ref mut audio_dequeue = app_data.streaming_data.as_mut().unwrap().deque;
 
-                for i in 0..in_frames {
+            //    for i in 0..in_frames {
                     //audio_dequeue.push( (input_samples[(2*i) as usize]+input_samples[(2*i+1) as usize]) /2.0 );
                     audio_dequeue.extend(input_samples.into_iter());
-                }
+            //    }
                 println!("Read {:?} frames from the input stream.", in_frames);
             } else {
                 std::thread::sleep(std::time::Duration::from_millis(1));
             }
 
         }
-    
+
     });
 
     std::thread::sleep(std::time::Duration::from_millis(100)); //give the PA thread 100ms headstart
