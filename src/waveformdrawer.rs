@@ -86,7 +86,12 @@ impl<'a> WaveformDrawer<'a> {
         let ticks = ticks-self.start_ticks;
         let settings=&mut self.settings;
 
-        {
+
+        let mut signal = Vec::<num::Complex<f32>>::new();
+        let mut dtft_len: u32;
+        let mut dtft_display_len: u32;
+        let mut needed_pixels: u32;
+        { //lock the data mutex here
             let data_arc = app_data.clone();
             let mut data = data_arc.lock().unwrap();
             let sample_point = ticks as u32 * data.get_sample_rate().unwrap()/1000; //what point (index) in the data are we at
@@ -98,50 +103,50 @@ impl<'a> WaveformDrawer<'a> {
             }
 
 
-            let dtft_len = std::cmp::min(sample_point, settings.dtft_samples); //how many points to sample for the DTFT
-            let dtft_display_len = std::cmp::min(sample_point, settings.dtft_display_samples); //how many points to sample for the DTFT
+            dtft_len = std::cmp::min(sample_point, settings.dtft_samples); //how many points to sample for the DTFT
+            dtft_display_len = std::cmp::min(sample_point, settings.dtft_display_samples); //how many points to sample for the DTFT
 
             //how many pixels (width) these samples will take up
-            let needed_pixels=((ticks - self.rendered_ticks) as f32 / settings.milliseconds_per_pixel) as u32;
-            let needed_pixels = std::cmp::min(needed_pixels, settings.width);
-
+            needed_pixels=((ticks - self.rendered_ticks) as f32 / settings.milliseconds_per_pixel) as u32;
+            needed_pixels = std::cmp::min(needed_pixels, settings.width);
 
 
             if needed_pixels != 0 {
-                let mut signal = vec![num::Complex{re: 0.0, im: 0.0}; dtft_len as usize];
-                let mut spectrum = signal.clone();
+                signal = vec![num::Complex{re: 0.0, im: 0.0}; dtft_len as usize];
                 let slice = data.get_slice(settings.channel as usize, (sample_point-dtft_len) as usize,(sample_point) as usize);
                 for i in (0)..dtft_len {
                     signal[i as usize].re=slice[i as usize];
                 }
-                let mut fft = rustfft::FFT::new(dtft_len as usize, false);
-                fft.process(&signal, &mut spectrum);
+            }
+        } //unlock data mutex here
 
-                let mut mean_norm : f32 = 0.0;
-                for i in 0..dtft_display_len {
-                    let norm=spectrum[i as usize].norm();
-                    mean_norm += norm;
-                }
+        if needed_pixels != 0 {
+            let mut spectrum = signal.clone();
+            let mut fft = rustfft::FFT::new(dtft_len as usize, false);
+            fft.process(&signal, &mut spectrum);
 
-                mean_norm /= (dtft_display_len/2) as f32;
-
-                let mut vstrip=VStrip::new(settings.height,needed_pixels);
-                for i in 0..dtft_display_len {
-                    let norm_spec_val = if fd.amp_manual {spectrum[i as usize]*fd.amp.exp()} else {spectrum[i as usize]/mean_norm};
-                    //let norm_spec_val=spectrum[i as usize]/mean_norm;
-
-                    let ired=std::cmp::min(   ((norm_spec_val*fd.red.0).norm().atan()*fd.red.1)   as u64,255);
-                    let igre=std::cmp::min(   ((((norm_spec_val.norm()*fd.green.0)+2.718).ln()-1.0)*fd.green.1)   as u64,255);
-                    let iblu=std::cmp::min(   (mean_norm*fd.blue.1.exp())   as u64,fd.blue.0 as u64);
-
-                    vstrip.write_pixel(i, ired as u8, igre as u8, iblu as u8);
-                }
-                self.rendered_ticks=ticks; //update the counter now that we're done drawing
-                self.vstrips.push(vstrip);
+            let mut mean_norm : f32 = 0.0;
+            for i in 0..dtft_display_len {
+                let norm=spectrum[i as usize].norm();
+                mean_norm += norm;
             }
 
-        } //end scope for data mutex
+            mean_norm /= (dtft_display_len/2) as f32;
 
+            let mut vstrip=VStrip::new(settings.height,needed_pixels);
+            for i in 0..dtft_display_len {
+                let norm_spec_val = if fd.amp_manual {spectrum[i as usize]*fd.amp.exp()} else {spectrum[i as usize]/mean_norm};
+                //let norm_spec_val=spectrum[i as usize]/mean_norm;
+
+                let ired=std::cmp::min(   ((norm_spec_val*fd.red.0).norm().atan()*fd.red.1)   as u64,255);
+                let igre=std::cmp::min(   ((((norm_spec_val.norm()*fd.green.0)+2.718).ln()-1.0)*fd.green.1)   as u64,255);
+                let iblu=std::cmp::min(   (mean_norm*fd.blue.1.exp())   as u64,fd.blue.0 as u64);
+
+                vstrip.write_pixel(i, ired as u8, igre as u8, iblu as u8);
+            }
+            self.rendered_ticks=ticks; //update the counter now that we're done drawing
+            self.vstrips.push(vstrip);
+        }
 
     }
 
