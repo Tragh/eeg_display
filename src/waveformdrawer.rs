@@ -88,8 +88,8 @@ impl<'a> WaveformDrawer<'a> {
 
 
         let mut signal = Vec::<num::Complex<f32>>::new();
-        let mut dtft_len: u32;
-        let mut dtft_display_len: u32;
+        let dtft_len: u32;
+        let dtft_display_len: u32;
         let mut needed_pixels: u32;
         { //lock the data mutex here
             let data_arc = app_data.clone();
