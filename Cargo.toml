@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Tragh <mikemth@gmail.com>"]
 
 [dependencies]
-portaudio = "0.6.4"
+portaudio = "0.7.0"
 rand = "0.3.15"
 regex = "0.2"
 num = "0.1.36"

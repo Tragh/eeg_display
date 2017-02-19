@@ -112,7 +112,7 @@ pub fn main() {
         loop{
             ticks=app.ticker.ticks();
             for wfd in &mut app.waveform_drawers {wfd.update_stft(ticks, &app.app_data, &app.filter_data);}
-            frame_rater.fps(ticks);
+            //frame_rater.fps(ticks);
             std::thread::sleep(std::time::Duration::from_millis(1));
             if frame_rater.elapsed_ms(ticks, 16) {break;}
         }
@@ -215,7 +215,7 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
                         println!("Initialising waveform drawer.");
                         app.waveform_drawers.clear();
                         let wfwidth: u32=1320;
-                        let wfheight: u32=192;
+                        let wfheight: u32=200;
                         for i in 0..openbci_file.channels{
                         app.waveform_drawers.push( WaveformDrawer::new( display,
                             WaveformDrawerSettings{
@@ -223,9 +223,9 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
                                     y: -50 - 250*i as i32 - wfheight as i32/2 + ui.win_h as i32/2,
                                     width: wfwidth,
                                     height: wfheight,
-                                    milliseconds_per_pixel: 2.5,
-                                    dtft_samples: 384,
-                                    dtft_display_samples: 192,
+                                    milliseconds_per_pixel: 5.0,
+                                    dtft_samples: 800,
+                                    dtft_display_samples: 200,
                                     channel: i}))
                         }
 
