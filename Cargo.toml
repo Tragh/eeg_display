@@ -1,6 +1,6 @@
 [package]
-name = "eeg_display"
-version = "0.1.0"
+name = "spectrum_analyser"
+version = "0.1.1"
 authors = ["Tragh <mikemth@gmail.com>"]
 
 [dependencies]

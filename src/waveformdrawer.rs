@@ -94,7 +94,7 @@ impl<'a> WaveformDrawer<'a> {
         { //lock the data mutex here
             let data_arc = app_data.clone();
             let mut data = data_arc.lock().unwrap();
-            let sample_point = ticks as u32 * data.get_sample_rate().unwrap()/1000; //what point (index) in the data are we at
+            let sample_point: u64 = ticks * data.get_sample_rate().unwrap() as u64 / 1000; //what point (index) in the data are we at
 
 
             //if we're too near the begining to do a DTFT or we're past the end of the data then we draw our texture and return
@@ -103,8 +103,8 @@ impl<'a> WaveformDrawer<'a> {
             }
 
 
-            dtft_len = std::cmp::min(sample_point, settings.dtft_samples); //how many points to sample for the DTFT
-            dtft_display_len = std::cmp::min(sample_point, settings.dtft_display_samples); //how many points to sample for the DTFT
+            dtft_len = std::cmp::min(sample_point, settings.dtft_samples as u64) as u32; //how many points to sample for the DTFT
+            dtft_display_len = std::cmp::min(sample_point, settings.dtft_display_samples as u64) as u32; //how many points to sample for the DTFT
 
             //how many pixels (width) these samples will take up
             needed_pixels=((ticks - self.rendered_ticks) as f32 / settings.milliseconds_per_pixel) as u32;
@@ -113,7 +113,7 @@ impl<'a> WaveformDrawer<'a> {
 
             if needed_pixels != 0 {
                 signal = vec![num::Complex{re: 0.0, im: 0.0}; dtft_len as usize];
-                let slice = data.get_slice(settings.channel as usize, (sample_point-dtft_len) as usize,(sample_point) as usize);
+                let slice = data.get_slice(settings.channel as usize, (sample_point-dtft_len as u64) as usize,(sample_point) as usize);
                 for i in (0)..dtft_len {
                     signal[i as usize].re=slice[i as usize];
                 }
@@ -130,7 +130,7 @@ impl<'a> WaveformDrawer<'a> {
                 let norm=spectrum[i as usize].norm();
                 mean_norm += norm;
             }
-
+            if mean_norm == 0.0 {mean_norm=1.0;}
             mean_norm /= (dtft_display_len/2) as f32;
 
             let mut vstrip=VStrip::new(settings.height,needed_pixels);
