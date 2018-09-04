@@ -51,13 +51,13 @@ pub struct WaveformDrawer<'a> {
 //    image: Option<City2D>,
     vstrips: Vec<VStrip>,
     texture: glium::texture::Texture2d,
-    display: &'a glium::backend::glutin_backend::GlutinFacade,
+    display: &'a glium::Display,
     running: bool,
     start_ticks: u64,
 }
 
 impl<'a> WaveformDrawer<'a> {
-    pub fn new(display: &glium::backend::glutin_backend::GlutinFacade, settings: WaveformDrawerSettings)->WaveformDrawer{
+    pub fn new(display: &glium::Display, settings: WaveformDrawerSettings)->WaveformDrawer{
         let texture = glium::texture::Texture2d::empty(display,settings.width, settings.height).expect("WaveformDrawer unable to create initial texture.");
         texture.as_surface().clear_color(0.0,0.0,0.0,1.0);
         WaveformDrawer{
@@ -180,7 +180,7 @@ impl<'a> WaveformDrawer<'a> {
             //now we need to slide the texture along so we have room to glue this bit on
             //then glue it on to create the final texture
             let dims = (image.w, image.h);
-            let image = glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_vec(), dims);
+            let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_vec(), dims);
             let texture = glium::texture::Texture2d::new(self.display, image).unwrap();
             {
                 let width = texture.get_width();

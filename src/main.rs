@@ -2,13 +2,16 @@ extern crate regex;
 extern crate num;
 #[macro_use] extern crate conrod;
 mod support;
-#[macro_use] extern crate glium;
+extern crate glium;
 
 extern crate portaudio;
 extern crate find_folder;
 extern crate rustfft;
 
-use glium::{DisplayBuild, Surface};
+//use glium::DisplayBuild;
+use glium::Surface;
+
+//use glium::{DisplayBuild, Surface};
 
 mod city2d;
 
@@ -31,11 +34,18 @@ pub fn main() {
     const HEIGHT: u32 = 1000;
 
     println!("Building the window.");
-    let display = glium::glutin::WindowBuilder::new()
+    /*let display = glium::glutin::WindowBuilder::new()
         .with_dimensions(WIDTH, HEIGHT)
         .with_title("STFT Viewer")
-        .build_glium()
-        .expect("Unable to create OpenGL Window.");
+        .build()
+        .expect("Unable to create OpenGL Window.");*/
+    let mut events_loop = glium::glutin::EventsLoop::new();
+    let window = glium::glutin::WindowBuilder::new()
+        .with_title("Conrod with glium!")
+        .with_dimensions((WIDTH, HEIGHT).into());
+    let context = glium::glutin::ContextBuilder::new();
+        //.with_vsync(true);
+    let display = glium::Display::new(window, context, &events_loop).unwrap();
 
     println!("Constructing UI.");
     let mut ui = conrod::UiBuilder::new([WIDTH as f64, HEIGHT as f64]).theme(support::theme()).build();
@@ -90,19 +100,27 @@ pub fn main() {
     'main: loop {
 
         // Handle all events.
-        for event in event_loop.next(&display) {
+        for event in event_loop.next(&mut events_loop) {
 
             // Use the `winit` backend feature to convert the winit event to a conrod one.
-            if let Some(event) = conrod::backend::winit::convert(event.clone(), &display) {
+            if let Some(event) = conrod::backend::winit::convert_event(event.clone(), &display) {
                 ui.handle_event(event);
             }
 
             match event {
-                // Break from the loop upon `Escape`.
-                glium::glutin::Event::KeyboardInput(_, _, Some(glium::glutin::VirtualKeyCode::Escape)) |
-                glium::glutin::Event::Closed =>
-                    break 'main,
-                _ => {},
+                glium::glutin::Event::WindowEvent { event, .. } => match event {
+                    // Break from the loop upon `Escape`.
+                    glium::glutin::WindowEvent::CloseRequested |
+                    glium::glutin::WindowEvent::KeyboardInput {
+                        input: glium::glutin::KeyboardInput {
+                            virtual_keycode: Some(glium::glutin::VirtualKeyCode::Escape),
+                            ..
+                        },
+                        ..
+                    } => break 'main,
+                    _ => (),
+                },
+                _ => (),
             }
         }
 
@@ -127,15 +145,14 @@ pub fn main() {
         set_ui(ui.set_widgets(), &ids, &display, &mut app);
 
         // Render the `Ui` and then display it on the screen.
-        let mut redraw_ui: bool = false;
-        let primitives = ui.draw_if_changed();
         let mut target = display.draw();
-        if primitives.is_some() { redraw_ui=true; }
-        if redraw_ui {renderer.fill(&display, primitives.unwrap(), &image_map);}
-        if redraw_ui {
-            target.clear_color(0.0, 0.0, 0.0, 1.0);
-            renderer.draw(&display, &mut target, &image_map).unwrap();
+        if let Some(primitives) = ui.draw_if_changed() {
+            renderer.fill(&display, primitives, &image_map);
         }
+        target.clear_color(0.0, 0.0, 0.0, 1.0);
+        renderer.draw(&display, &mut target, &image_map).unwrap();
+
+
             //###### MY DRAWING GOES HERE ######
 
             //gliumtexdraw.draw(&mut target,&textures[i as usize],0.0,wy(400.0-250.0*i as f64),wx(1600.0),wy(192.0));
@@ -173,7 +190,7 @@ widget_ids!{
         toggle_manamp,
     }
 }
-fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::backend::glutin_backend::GlutinFacade, app: &mut AppState<'b>){
+fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Display, app: &mut AppState<'b>){
     #![allow(unused_imports)]
     use conrod::{color, widget, Colorable, Labelable, Positionable, Scalar, Sizeable, Widget};
     let path = std::path::Path::new("data/");
@@ -185,12 +202,13 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
             widget::Canvas::new()
                 .color(conrod::color::DARK_CHARCOAL)
                 .x_y(660.0,200.0)
-                .w_h(600.0,600.0)
+                .w_h(440.0,600.0)
                 .set(ids.canvas, ui);
 
             for _press in widget::Button::new()
                 .label("Open File")
-                .x_y(660.0,-130.0)
+                .align_middle_x_of(ids.canvas)
+                .down(40.0)
                 .w_h(400.0, 50.0)
                 .set(ids.button, ui)
                 {
@@ -240,7 +258,8 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
 
             for _press in widget::Button::new()
                 .label("Use Portaudio mic for input.")
-                .x_y(660.0,-190.0)
+                .align_middle_x_of(ids.canvas)
+                .down(40.0)
                 .w_h(400.0, 50.0)
                 .set(ids.btn_useportaudio, ui)
                 {
@@ -253,12 +272,12 @@ fn set_ui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::back
                     let wfheight: u32=900;
                     app.waveform_drawers.push( WaveformDrawer::new( display,
                         WaveformDrawerSettings{
-                                x: -300,
-                                y: -50 as i32 - wfheight as i32/2 + ui.win_h as i32/2,
+                                x: -200,
+                                y: 0 as i32 - wfheight as i32/2 + ui.win_h as i32/2,
                                 width: wfwidth,
                                 height: wfheight,
                                 milliseconds_per_pixel: 5.0,
-                                dtft_samples: 1200,
+                                dtft_samples: 1800,
                                 dtft_display_samples: 300,
                                 channel: 0}));
 

@@ -90,7 +90,7 @@ pub fn pa_read_from_mic<'a>(app: &mut AppState) {
                     //audio_dequeue.push( (input_samples[(2*i) as usize]+input_samples[(2*i+1) as usize]) /2.0 );
                     audio_dequeue.extend(input_samples.into_iter());
             //    }
-                println!("Read {:?} frames from the input stream.", in_frames);
+            //    println!("Read {:?} frames from the input stream.", in_frames);
             } else {
                 std::thread::sleep(std::time::Duration::from_millis(1));
             }

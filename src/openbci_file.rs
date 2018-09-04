@@ -21,6 +21,7 @@ impl OpenBCIFile {
         for linew in f.lines() {
             let line = linew.unwrap();
             if line.len() > 0 && line.as_bytes()[0] == '%' as u8 {
+				println!("Header line: {:?}", line);
                 continue;
             }
 
@@ -28,10 +29,11 @@ impl OpenBCIFile {
             let fields: Vec<&str> = re.split(&line).collect();
             if channels == -1 { //our first non-header line
                 channels = fields.len() as i32 - 5; //ignore i3dex, 3 accelerometers and timestamp to get remaining fields
+                println!("Channels: {:?}", channels);
                 samples.resize(channels as usize, Vec::<f32>::new());
             }
             for i in 0..channels {
-                samples[i as usize].push(fields[3 + i as usize].parse::<f32>().expect("Found non-float amplitude in file."));
+                samples[i as usize].push(fields[1 + i as usize].parse::<f32>().expect("Found non-float amplitude in file."));
             }
 
         }

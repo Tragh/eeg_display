@@ -57,7 +57,7 @@ pub fn theme() -> conrod::Theme {
         font_size_large: 26,
         font_size_medium: 18,
         font_size_small: 12,
-        widget_styling: std::collections::HashMap::new(),
+        widget_styling: conrod::theme::StyleMap::default(),
         mouse_drag_threshold: 0.0,
         double_click_threshold: std::time::Duration::from_millis(500),
     }
@@ -88,9 +88,7 @@ impl EventLoop {
     }
 
     /// Produce an iterator yielding all available events.
-    pub fn next(&mut self, display: &glium::Display) -> Vec<glium::glutin::Event> {
-
-        /*
+    pub fn next(&mut self, events_loop: &mut glium::glutin::EventsLoop) -> Vec<glium::glutin::Event> {
         // We don't want to loop any faster than 60 FPS, so wait until it has been at least 16ms
         // since the last yield.
         let last_update = self.last_update;
@@ -98,15 +96,18 @@ impl EventLoop {
         let duration_since_last_update = std::time::Instant::now().duration_since(last_update);
         if duration_since_last_update < sixteen_ms {
             std::thread::sleep(sixteen_ms - duration_since_last_update);
-        }*/
+        }
 
         // Collect all pending events.
         let mut events = Vec::new();
-        events.extend(display.poll_events());
+        events_loop.poll_events(|event| events.push(event));
 
         // If there are no events and the `Ui` does not need updating, wait for the next event.
         if events.is_empty() && !self.ui_needs_update {
-            events.extend(display.wait_events().next());
+            events_loop.run_forever(|event| {
+                events.push(event);
+                glium::glutin::ControlFlow::Break
+            });
         }
 
         self.ui_needs_update = false;
