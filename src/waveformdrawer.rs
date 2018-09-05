@@ -121,6 +121,24 @@ impl<'a> WaveformDrawer<'a> {
         } //unlock data mutex here
 
         if needed_pixels != 0 {
+
+            match fd.window_shape {
+                0 /*none*/ => {},
+                1 /*Hann*/ => {
+                    for i in (0)..dtft_len {
+                        let sin=(std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).sin();
+                        signal[i as usize].re = signal[i as usize].re*sin*sin;
+                    }
+                },
+                2 /*Hamming*/ => {
+                    for i in (0)..dtft_len {
+                       let cos=(std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).cos();
+                       signal[i as usize].re = signal[i as usize].re*(0.53836 - 0.46164*cos);
+                    }
+                },
+                _=>{}
+            }
+
             let mut spectrum = signal.clone();
             let mut fft = rustfft::FFT::new(dtft_len as usize, false);
             fft.process(&signal, &mut spectrum);

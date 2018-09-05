@@ -134,6 +134,7 @@ pub struct FilterData{
     pub amp_min: f32,
     pub amp_max: f32,
     pub amp_manual: bool,
+    pub window_shape: i32,
 }
 impl Default for FilterData{
     fn default()->FilterData{
@@ -151,6 +152,7 @@ impl Default for FilterData{
              amp_min: -10.0,
              amp_max: 5.0,
              amp_manual: false,
+             window_shape: 0,
         }
     }
 }

@@ -20,6 +20,7 @@ widget_ids!{
         blue_xy_pad,
         sldier_amplification,
         toggle_manamp,
+        drop_down_dft_window_shape,
     }
 }
 pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Display, app: &mut AppState<'b>){
@@ -160,32 +161,31 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
                 .set(ids.settings_canvas, ui);
             let ref mut fd = app.filter_data;
 
-            for (x, y) in widget::XYPad::new(fd.red.0, fd.min_red.0, fd.max_red.0,
-                                                fd.red.1, fd.min_red.1, fd.max_red.1)
-                .label("Red Channel")
-                .w_h(X(10.0),X(10.0))
-                .y(Y(35.0))
-                .align_middle_x_of(ids.settings_canvas)
-                .parent(ids.settings_canvas)
-                .set(ids.red_xy_pad, ui)
-                {fd.red = (x, y);}
-
             for (x, y) in widget::XYPad::new(fd.green.0, fd.min_green.0, fd.max_green.0,
                                                 fd.green.1, fd.min_green.1, fd.max_green.1)
-                .label("Green Channel")
-                .w_h(X(10.0),X(10.0))
-                .down(Y(5.0))
+                .label("Green")
+                .w_h(X(7.0),X(7.0))
+                .y(Y(35.0))
                 .align_middle_x_of(ids.settings_canvas)
                 .parent(ids.settings_canvas)
                 .set(ids.green_xy_pad, ui)
                 {fd.green = (x, y);}
 
+            for (x, y) in widget::XYPad::new(fd.red.0, fd.min_red.0, fd.max_red.0,
+                                                fd.red.1, fd.min_red.1, fd.max_red.1)
+                .label("Red")
+                .w_h(X(7.0),X(7.0))
+                .left_from(ids.green_xy_pad,Y(2.0))
+                .parent(ids.settings_canvas)
+                .set(ids.red_xy_pad, ui)
+                {fd.red = (x, y);}
+
+
             for (x, y) in widget::XYPad::new(fd.blue.0, fd.min_blue.0, fd.max_blue.0,
                                                 fd.blue.1, fd.min_blue.1, fd.max_blue.1)
-                .label("Blue Channel")
-                .w_h(X(10.0),X(10.0))
-                .down(Y(5.0))
-                .align_middle_x_of(ids.settings_canvas)
+                .label("Blue")
+                .w_h(X(7.0),X(7.0))
+                .right_from(ids.green_xy_pad,Y(2.0))
                 .parent(ids.settings_canvas)
                 .set(ids.blue_xy_pad, ui)
                 {fd.blue = (x, y);}
@@ -208,6 +208,19 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
                     .set(ids.sldier_amplification, ui)
                     {fd.amp=value;}
             }
+
+            let list_items = [
+            "Rectangular Window".to_string(),
+            "Hann Window".to_string(),
+            "Hamming Window".to_string(),
+        ];
+
+            for drop in widget::DropDownList::new(&list_items,Some(fd.window_shape as usize))
+                .align_middle_x_of(ids.settings_canvas)
+                .w_h(X(20.0),X(3.0))
+                .down(Y(5.0))
+                .set(ids.drop_down_dft_window_shape, ui)
+                {fd.window_shape = drop as i32;}
 
         }
         _=>()
