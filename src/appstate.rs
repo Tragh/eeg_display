@@ -139,12 +139,12 @@ pub struct FilterData{
 impl Default for FilterData{
     fn default()->FilterData{
         FilterData{
-             red: (1.0, 150.0),
+             red: (0.5, 100.0),
              min_red: (0.1, 50.0),
              max_red: (4.0,250.0 ),
-             green: (1.0, 50.0),
-             min_green: (0.1, 10.0),
-             max_green: (4.0, 100.0),
+             green: (2.0, 2.0),
+             min_green: (0.1, 0.1),
+             max_green: (5.0, 5.0),
              blue: (127.0, -5.0),
              min_blue: (0.0, -8.0),
              max_blue: (255.0, 8.0),

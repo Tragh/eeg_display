@@ -171,7 +171,8 @@ impl<'a> WaveformDrawer<'a> {
                 //let norm_spec_val=spectrum[i as usize]/mean_norm;
 
                 let ired=std::cmp::min(   ((norm_spec_val*fd.red.0).norm().atan()*fd.red.1)   as u64,255);
-                let igre=std::cmp::min(   ((((norm_spec_val.norm()*fd.green.0)+2.718).ln()-1.0)*fd.green.1)   as u64,255);
+                //let igre=std::cmp::min(   ((((norm_spec_val.norm()*fd.green.0)+2.718).ln()-1.0)*fd.green.1)   as u64,255);
+                let igre=std::cmp::min(   (norm_spec_val.norm()*fd.green.0.exp() + (1.0+norm_spec_val.norm()).ln() * fd.green.1.exp() )   as u64,255);
                 let iblu=std::cmp::min(   (mean_norm*fd.blue.1.exp())   as u64,fd.blue.0 as u64);
 
                 vstrip.write_pixel(i, ired as u8, igre as u8, iblu as u8);
