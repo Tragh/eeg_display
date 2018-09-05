@@ -126,7 +126,6 @@ pub fn main() {
         }
 
 
-
         let mut ticks;
         loop{
             ticks=app.ticker.ticks();
@@ -137,10 +136,6 @@ pub fn main() {
         }
 
 
-
-
-        let win_w : f64 = ui.win_w.clone();
-        let win_h: f64 = ui.win_h.clone();
 
 
         ui::gui(ui.set_widgets(), &ids, &display, &mut app);
@@ -160,7 +155,7 @@ pub fn main() {
             for wfd in &mut app.waveform_drawers {
                 //gliumtexdraw.draw(&mut target,&waveform_textures[i as usize],0.0,wy(400.0-250.0*i as f64),wx(1600.0),wy(192.0));
 
-                wfd.generate_and_draw_texture(&mut target, win_w as u32, win_h as u32);
+                wfd.generate_and_draw_texture(&mut target);
             }
 
             //###### MY DRAWING ENDS HERE ######

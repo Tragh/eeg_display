@@ -152,7 +152,8 @@ impl<'a> WaveformDrawer<'a> {
 
 
 
-    pub fn generate_and_draw_texture(&mut self, target: &mut glium::Frame, win_w: u32, win_h: u32){
+    pub fn generate_and_draw_texture(&mut self, target: &mut glium::Frame){
+        let (fb_w,fb_h)=target.get_dimensions();
         if !self.running {return;}
         if self.vstrips.len()!=0 {
 
@@ -216,8 +217,8 @@ impl<'a> WaveformDrawer<'a> {
                             width: width as i32,
                             height: height as i32},
                         glium::uniforms::MagnifySamplerFilter::Nearest);
-                    }
-                    self.texture=new_waveform_texture;
+                }
+                self.texture=new_waveform_texture;
             }
         }
 
@@ -225,6 +226,7 @@ impl<'a> WaveformDrawer<'a> {
         let tex=&self.texture;
         let width = tex.get_width();
         let height = tex.get_height().unwrap();
+        let target_width = self.settings.width;
         let target_height = self.settings.height;
         let sfb = tex.as_surface();
         target.blit_from_simple_framebuffer(&sfb,
@@ -235,9 +237,9 @@ impl<'a> WaveformDrawer<'a> {
                 height: height},
             &glium::BlitTarget{
                 //basically 0,0 is the centre of the screen and texture and distances are in pixels, so we need to transform the coordinates a bit
-                left: (self.settings.x - self.settings.width as i32 /2 + win_w as i32/2) as u32,
-                bottom: (self.settings.y - self.settings.height as i32/2 + win_h as i32/2) as u32,
-                width: width as i32,
+                left: (self.settings.x - target_width as i32 /2 + fb_w as i32/2) as u32,
+                bottom: (self.settings.y - target_height as i32/2 + fb_h as i32/2) as u32,
+                width: target_width as i32,
                 height: target_height as i32},
             glium::uniforms::MagnifySamplerFilter::Linear);
     }

@@ -24,8 +24,21 @@ widget_ids!{
 }
 pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Display, app: &mut AppState<'b>){
     #![allow(unused_imports)]
+    #![allow(non_snake_case)]
+
     use conrod::{color, widget, Colorable, Labelable, Positionable, Scalar, Sizeable, Widget};
     let path = std::path::Path::new("data/");
+
+    //So the window width and framebuffer width are different!!!!
+    //They may or may not correspond to the actual window width
+    //This is all a bit confusing so there are some helper functions for this
+    let win_w = ui.win_w;
+    let win_h = ui.win_h;
+    let (fb_w,fb_h) = display.get_framebuffer_dimensions();
+    let X = |x: f64| x*win_w/100.0;
+    let Y = |x: f64| x*win_h/100.0;
+    let fbX = |x: f64| x*fb_w as f64/100.0;
+    let fbY = |x: f64| x*fb_h as f64/100.0;
 
 
     match app.gui_data.gui_display {
@@ -33,15 +46,15 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
         {
             widget::Canvas::new()
                 .color(conrod::color::DARK_CHARCOAL)
-                .x_y(660.0,200.0)
-                .w_h(440.0,600.0)
+                .x_y(X(37.5),Y(20.0))
+                .w_h(X(25.0),Y(60.0))
                 .set(ids.canvas, ui);
 
             for _press in widget::Button::new()
                 .label("Open File")
                 .align_middle_x_of(ids.canvas)
-                .down(40.0)
-                .w_h(400.0, 50.0)
+                .down(Y(4.0))
+                .w_h(X(20.0), Y(5.0))
                 .set(ids.button, ui)
                 {
                     println!("Pressed!");
@@ -64,13 +77,13 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
 
                         println!("Initialising waveform drawer.");
                         app.waveform_drawers.clear();
-                        let wfwidth: u32=1320;
-                        let wfheight: u32=200;
+                        let wfwidth: u32=fbX(75.0) as u32;
+                        let wfheight: u32=fbY(20.0) as u32;
                         for i in 0..openbci_file.channels{
                         app.waveform_drawers.push( WaveformDrawer::new( display,
                             WaveformDrawerSettings{
-                                    x: -300,
-                                    y: -50 - 250*i as i32 - wfheight as i32/2 + ui.win_h as i32/2,
+                                    x: fbX(-12.5) as i32,
+                                    y: fbY(37.5) as i32 - fbY(25.0) as i32 *i as i32,
                                     width: wfwidth,
                                     height: wfheight,
                                     milliseconds_per_pixel: 5.0,
@@ -91,8 +104,8 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
             for _press in widget::Button::new()
                 .label("Use Portaudio mic for input.")
                 .align_middle_x_of(ids.canvas)
-                .down(40.0)
-                .w_h(400.0, 50.0)
+                .down(Y(4.0))
+                .w_h(X(20.0), Y(5.0))
                 .set(ids.btn_useportaudio, ui)
                 {
 
@@ -100,12 +113,12 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
 
                     println!("Initialising waveform drawer.");
                     app.waveform_drawers.clear();
-                    let wfwidth: u32=1320;
-                    let wfheight: u32=900;
+                    let wfwidth: u32=fbX(75.0) as u32;
+                    let wfheight: u32=fbY(100.0) as u32;
                     app.waveform_drawers.push( WaveformDrawer::new( display,
                         WaveformDrawerSettings{
-                                x: -200,
-                                y: 0 as i32 - wfheight as i32/2 + ui.win_h as i32/2,
+                                x: fbX(-12.5) as i32,
+                                y: 0,
                                 width: wfwidth,
                                 height: wfheight,
                                 milliseconds_per_pixel: 5.0,
@@ -142,16 +155,16 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
         {
             widget::Canvas::new()
                 .color(conrod::color::DARK_CHARCOAL)
-                .x_y(660.0,000.0)
-                .w_h(600.0,1000.0)
+                .x_y(X(37.5),Y(0.0))
+                .w_h(X(25.0),Y(100.0))
                 .set(ids.settings_canvas, ui);
             let ref mut fd = app.filter_data;
 
             for (x, y) in widget::XYPad::new(fd.red.0, fd.min_red.0, fd.max_red.0,
                                                 fd.red.1, fd.min_red.1, fd.max_red.1)
                 .label("Red Channel")
-                .w_h(200.0,200.0)
-                .y(300.0)
+                .w_h(X(10.0),X(10.0))
+                .y(Y(35.0))
                 .align_middle_x_of(ids.settings_canvas)
                 .parent(ids.settings_canvas)
                 .set(ids.red_xy_pad, ui)
@@ -160,8 +173,8 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
             for (x, y) in widget::XYPad::new(fd.green.0, fd.min_green.0, fd.max_green.0,
                                                 fd.green.1, fd.min_green.1, fd.max_green.1)
                 .label("Green Channel")
-                .w_h(200.0,200.0)
-                .y(50.0)
+                .w_h(X(10.0),X(10.0))
+                .down(Y(5.0))
                 .align_middle_x_of(ids.settings_canvas)
                 .parent(ids.settings_canvas)
                 .set(ids.green_xy_pad, ui)
@@ -170,8 +183,8 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
             for (x, y) in widget::XYPad::new(fd.blue.0, fd.min_blue.0, fd.max_blue.0,
                                                 fd.blue.1, fd.min_blue.1, fd.max_blue.1)
                 .label("Blue Channel")
-                .w_h(200.0,200.0)
-                .y(-200.0)
+                .w_h(X(10.0),X(10.0))
+                .down(Y(5.0))
                 .align_middle_x_of(ids.settings_canvas)
                 .parent(ids.settings_canvas)
                 .set(ids.blue_xy_pad, ui)
@@ -181,16 +194,16 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
                 .label("Manual Amp")
                 .label_color(if fd.amp_manual { conrod::color::WHITE } else { conrod::color::LIGHT_CHARCOAL })
                 .align_middle_x_of(ids.settings_canvas)
-                .y(-350.0)
-                .w_h(300.0, 40.0)
+                .w_h(X(20.0),X(3.0))
+                .down(Y(5.0))
                 .set(ids.toggle_manamp, ui)
             {fd.amp_manual=manamp;}
 
             if fd.amp_manual {
                 for value in widget::Slider::new(fd.amp,fd.amp_min,fd.amp_max)
-                    .y(-390.0)
                     .align_middle_x_of(ids.settings_canvas)
-                    .w_h(300.0, 40.0)
+                    .w_h(X(20.0),X(3.0))
+                    .down(Y(0.0))
                     .label("Amplification")
                     .set(ids.sldier_amplification, ui)
                     {fd.amp=value;}
