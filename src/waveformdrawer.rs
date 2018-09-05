@@ -136,6 +136,20 @@ impl<'a> WaveformDrawer<'a> {
                        signal[i as usize].re = signal[i as usize].re*(0.53836 - 0.46164*cos);
                     }
                 },
+                3 /*Nuttall*/ => {
+                    for i in (0)..dtft_len {
+                       let cos2=(2.0*std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).cos();
+                       let cos4=(4.0*std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).cos();
+                       let cos6=(6.0*std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).cos();
+                       signal[i as usize].re = signal[i as usize].re*(0.355768 - 0.487396*cos2 + 0.144232*cos4 - 0.012604*cos6);
+                    }
+                },
+                4 /*Sine*/ => {
+                    for i in (0)..dtft_len {
+                       let sin=(std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).sin();
+                       signal[i as usize].re = signal[i as usize].re*sin;
+                    }
+                },
                 _=>{}
             }
 

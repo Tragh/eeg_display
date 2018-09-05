@@ -210,10 +210,12 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
             }
 
             let list_items = [
-            "Rectangular Window".to_string(),
-            "Hann Window".to_string(),
-            "Hamming Window".to_string(),
-        ];
+                "Rectangular Window".to_string(),
+                "Hann Window".to_string(),
+                "Hamming Window".to_string(),
+                "Nuttall Window".to_string(),
+                "Sine Window".to_string(),
+            ];
 
             for drop in widget::DropDownList::new(&list_items,Some(fd.window_shape as usize))
                 .align_middle_x_of(ids.settings_canvas)
