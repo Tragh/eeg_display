@@ -1,5 +1,4 @@
 use std;
-use num;
 use appstate::{AppData, FilterData};
 use rustfft;
 
@@ -87,7 +86,7 @@ impl<'a> WaveformDrawer<'a> {
         let settings=&mut self.settings;
 
 
-        let mut signal = Vec::<num::Complex<f32>>::new();
+        let mut signal = Vec::<rustfft::num_complex::Complex<f32>>::new();
         let dtft_len: u32;
         let dtft_display_len: u32;
         let mut needed_pixels: u32;
@@ -112,7 +111,7 @@ impl<'a> WaveformDrawer<'a> {
 
 
             if needed_pixels != 0 {
-                signal = vec![num::Complex{re: 0.0, im: 0.0}; dtft_len as usize];
+                signal = vec![rustfft::num_complex::Complex{re: 0.0, im: 0.0}; dtft_len as usize];
                 let slice = data.get_slice(settings.channel as usize, (sample_point-dtft_len as u64) as usize,(sample_point) as usize);
                 for i in (0)..dtft_len {
                     signal[i as usize].re=slice[i as usize];
@@ -154,8 +153,9 @@ impl<'a> WaveformDrawer<'a> {
             }
 
             let mut spectrum = signal.clone();
-            let mut fft = rustfft::FFT::new(dtft_len as usize, false);
-            fft.process(&signal, &mut spectrum);
+            let mut fft_planner = rustfft::FFTplanner::new(false);
+            let fft = fft_planner.plan_fft(dtft_len as usize);
+            fft.process(&mut signal, &mut spectrum);
 
             let mut mean_norm : f32 = 0.0;
             for i in 0..dtft_display_len {
@@ -175,7 +175,7 @@ impl<'a> WaveformDrawer<'a> {
                 let igre=std::cmp::min(   (norm_spec_val.norm()*fd.green.0.exp() + (1.0+norm_spec_val.norm()).ln() * fd.green.1.exp() )   as u64,255);
                 let iblu=std::cmp::min(   (mean_norm*fd.blue.1.exp())   as u64,fd.blue.0 as u64);
 
-                vstrip.write_pixel(i, ired as u8, igre as u8, iblu as u8);
+                vstrip.write_pixel(dtft_display_len-i-1, ired as u8, igre as u8, iblu as u8);
             }
             self.rendered_ticks=ticks; //update the counter now that we're done drawing
             self.vstrips.push(vstrip);
