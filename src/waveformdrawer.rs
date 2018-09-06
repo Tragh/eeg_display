@@ -1,6 +1,7 @@
 use std;
 use appstate::{AppData, FilterData};
 use rustfft;
+use dftwindower::{DFTWindower};
 
 use glium;
 use glium::{Surface};
@@ -56,13 +57,14 @@ pub struct WaveformDrawer<'a> {
     display: &'a glium::Display,
     running: bool,
     start_ticks: u64,
+    dft_windower: DFTWindower,
 }
 
 impl<'a> WaveformDrawer<'a> {
     pub fn new(display: &glium::Display, settings: WaveformDrawerSettings)->WaveformDrawer{
         let texture_width= settings.time_pixels;
         let texture_height= settings.dtft_display_samples;
-
+        let dtft_samples = settings.dtft_samples;
         let texture = glium::texture::Texture2d::empty(display,texture_width, texture_height).expect("WaveformDrawer unable to create initial texture.");
         texture.as_surface().clear_color(0.0,0.0,0.0,1.0);
         WaveformDrawer{
@@ -75,7 +77,8 @@ impl<'a> WaveformDrawer<'a> {
             vstrips: Vec::<VStrip>::new(),
             display: display,
             running: false,
-            start_ticks: 0
+            start_ticks: 0,
+            dft_windower: DFTWindower::new(dtft_samples),
         }
     }
 
@@ -92,7 +95,6 @@ impl<'a> WaveformDrawer<'a> {
         if !self.running {return;}
         let ticks = ticks-self.start_ticks;
         let settings=&mut self.settings;
-
 
         let mut signal = Vec::<rustfft::num_complex::Complex<f32>>::new();
         let dtft_len: u32;
@@ -133,28 +135,27 @@ impl<'a> WaveformDrawer<'a> {
                 0 /*none*/ => {},
                 1 /*Hann*/ => {
                     for i in (0)..dtft_len {
-                        let sin=(std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).sin();
-                        signal[i as usize].re = signal[i as usize].re*sin*sin;
+                        signal[i as usize].re = signal[i as usize].re*self.dft_windower.hann(i,dtft_len);
                     }
                 },
                 2 /*Hamming*/ => {
                     for i in (0)..dtft_len {
-                       let cos=(std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).cos();
-                       signal[i as usize].re = signal[i as usize].re*(0.53836 - 0.46164*cos);
+                       signal[i as usize].re = signal[i as usize].re*self.dft_windower.hamming(i,dtft_len);
                     }
                 },
                 3 /*Nuttall*/ => {
                     for i in (0)..dtft_len {
-                       let cos2=(2.0*std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).cos();
-                       let cos4=(4.0*std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).cos();
-                       let cos6=(6.0*std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).cos();
-                       signal[i as usize].re = signal[i as usize].re*(0.355768 - 0.487396*cos2 + 0.144232*cos4 - 0.012604*cos6);
+                       signal[i as usize].re = signal[i as usize].re*self.dft_windower.nuttall(i,dtft_len);
                     }
                 },
                 4 /*Sine*/ => {
                     for i in (0)..dtft_len {
-                       let sin=(std::f32::consts::PI*i as f32/(dtft_len - 1) as f32 ).sin();
-                       signal[i as usize].re = signal[i as usize].re*sin;
+                       signal[i as usize].re = signal[i as usize].re*self.dft_windower.sine(i,dtft_len);
+                    }
+                },
+                5 /*Kaiser*/ => {
+                    for i in (0)..dtft_len {
+                       signal[i as usize].re = signal[i as usize].re*self.dft_windower.kaiser(i,dtft_len);
                     }
                 },
                 _=>{}

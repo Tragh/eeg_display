@@ -214,6 +214,7 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
                 "Hamming Window".to_string(),
                 "Nuttall Window".to_string(),
                 "Sine Window".to_string(),
+                "Kaiser Window".to_string(),
             ];
 
             for drop in widget::DropDownList::new(&list_items,Some(fd.window_shape as usize))

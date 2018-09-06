@@ -27,6 +27,7 @@ pub mod pastuff;
 
 pub mod ui;
 
+pub mod dftwindower;
 
 
 pub fn main() {
