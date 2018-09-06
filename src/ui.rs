@@ -35,11 +35,12 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
     //This is all a bit confusing so there are some helper functions for this
     let win_w = ui.win_w;
     let win_h = ui.win_h;
-    let (fb_w,fb_h) = display.get_framebuffer_dimensions();
     let X = |x: f64| x*win_w/100.0;
     let Y = |x: f64| x*win_h/100.0;
+
+    /* let (fb_w,fb_h) = display.get_framebuffer_dimensions();
     let fbX = |x: f64| x*fb_w as f64/100.0;
-    let fbY = |x: f64| x*fb_h as f64/100.0;
+    let fbY = |x: f64| x*fb_h as f64/100.0; */
 
 
     match app.gui_data.gui_display {
@@ -78,16 +79,15 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
 
                         println!("Initialising waveform drawer.");
                         app.waveform_drawers.clear();
-                        let wfwidth: u32=fbX(75.0) as u32;
-                        let wfheight: u32=fbY(20.0) as u32;
                         for i in 0..openbci_file.channels{
                         app.waveform_drawers.push( WaveformDrawer::new( display,
                             WaveformDrawerSettings{
-                                    x: fbX(-12.5) as i32,
-                                    y: fbY(37.5) as i32 - fbY(25.0) as i32 *i as i32,
-                                    width: wfwidth,
-                                    height: wfheight,
-                                    milliseconds_per_pixel: 5.0,
+                                    x: -12.5,
+                                    y: 37.5 - 25.0 *i as f32,
+                                    width: 75.0,
+                                    height: 20.0,
+                                    milliseconds_per_pixel: 8.0,
+                                    time_pixels: 1000,
                                     dtft_samples: 800,
                                     dtft_display_samples: 200,
                                     channel: i}))
@@ -114,15 +114,14 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
 
                     println!("Initialising waveform drawer.");
                     app.waveform_drawers.clear();
-                    let wfwidth: u32=fbX(75.0) as u32;
-                    let wfheight: u32=fbY(100.0) as u32;
                     app.waveform_drawers.push( WaveformDrawer::new( display,
                         WaveformDrawerSettings{
-                                x: fbX(-12.5) as i32,
-                                y: 0,
-                                width: wfwidth,
-                                height: wfheight,
+                                x: -12.5,
+                                y: 0.0,
+                                width: 75.0,
+                                height: 100.0,
                                 milliseconds_per_pixel: 5.0,
+                                time_pixels: 1600,
                                 dtft_samples: 1800,
                                 dtft_display_samples: 300,
                                 channel: 0}));

@@ -33,11 +33,12 @@ impl VStrip{
 
 #[allow(dead_code)]
 pub struct WaveformDrawerSettings {
-    pub x: i32, //x coord of the display
-    pub y: i32, //y coord of display
-    pub width: u32, //width of the display
-    pub height: u32,    //height of the display
+    pub x: f32, //x coord of the display
+    pub y: f32, //y coord of display
+    pub width: f32, //width of the display
+    pub height: f32,    //height of the display
     pub milliseconds_per_pixel: f32,  //how much data to display, in ms
+    pub time_pixels: u32,  //how many time periods to have
     pub dtft_samples: u32, //how many samples to take for the ftft window
     pub dtft_display_samples: u32, //how many of the above samples to display (cuts off high frequency samples)
     pub channel: u32, //which chanel to read from
@@ -50,6 +51,8 @@ pub struct WaveformDrawer<'a> {
 //    image: Option<City2D>,
     vstrips: Vec<VStrip>,
     texture: glium::texture::Texture2d,
+    texture_w: u32,
+    texture_h: u32,
     display: &'a glium::Display,
     running: bool,
     start_ticks: u64,
@@ -57,11 +60,16 @@ pub struct WaveformDrawer<'a> {
 
 impl<'a> WaveformDrawer<'a> {
     pub fn new(display: &glium::Display, settings: WaveformDrawerSettings)->WaveformDrawer{
-        let texture = glium::texture::Texture2d::empty(display,settings.width, settings.height).expect("WaveformDrawer unable to create initial texture.");
+        let texture_width= settings.time_pixels;
+        let texture_height= settings.dtft_display_samples;
+
+        let texture = glium::texture::Texture2d::empty(display,texture_width, texture_height).expect("WaveformDrawer unable to create initial texture.");
         texture.as_surface().clear_color(0.0,0.0,0.0,1.0);
         WaveformDrawer{
             //image: Some(City2D::new(settings.width,settings.dtft_display_samples)),
             texture: texture,
+            texture_w: texture_width,
+            texture_h: texture_height,
             settings: settings,
             rendered_ticks: 0,
             vstrips: Vec::<VStrip>::new(),
@@ -107,7 +115,7 @@ impl<'a> WaveformDrawer<'a> {
 
             //how many pixels (width) these samples will take up
             needed_pixels=((ticks - self.rendered_ticks) as f32 / settings.milliseconds_per_pixel) as u32;
-            needed_pixels = std::cmp::min(needed_pixels, settings.width);
+            needed_pixels = std::cmp::min(needed_pixels, self.texture_w);
 
 
             if needed_pixels != 0 {
@@ -165,7 +173,7 @@ impl<'a> WaveformDrawer<'a> {
             if mean_norm == 0.0 {mean_norm=1.0;}
             mean_norm /= (dtft_display_len/2) as f32;
 
-            let mut vstrip=VStrip::new(settings.height,needed_pixels);
+            let mut vstrip=VStrip::new(settings.dtft_display_samples,needed_pixels);
             for i in 0..dtft_display_len {
                 let norm_spec_val = if fd.amp_manual {spectrum[i as usize]*fd.amp.exp()} else {spectrum[i as usize]/mean_norm};
                 //let norm_spec_val=spectrum[i as usize]/mean_norm;
@@ -190,7 +198,7 @@ impl<'a> WaveformDrawer<'a> {
         if !self.running {return;}
         if self.vstrips.len()!=0 {
 
-            let texture_width=self.settings.width;
+            let texture_width=self.settings.time_pixels;
             let texture_height=self.settings.dtft_display_samples;
 
             //the section below glues together all the vstrips to create the right hand side of the graph
@@ -259,8 +267,10 @@ impl<'a> WaveformDrawer<'a> {
         let tex=&self.texture;
         let width = tex.get_width();
         let height = tex.get_height().unwrap();
-        let target_width = self.settings.width;
-        let target_height = self.settings.height;
+        let target_width = self.settings.width * fb_w as f32 / 100.0;
+        let target_height = self.settings.height * fb_h as f32 / 100.0;
+        let target_x = fb_w as f32 *(self.settings.x - self.settings.width/2.0 +50.0)/100.0;
+        let target_y = fb_h as f32 *(self.settings.y - self.settings.height/2.0 +50.0)/100.0;
         let sfb = tex.as_surface();
         target.blit_from_simple_framebuffer(&sfb,
             &glium::Rect{
@@ -270,8 +280,8 @@ impl<'a> WaveformDrawer<'a> {
                 height: height},
             &glium::BlitTarget{
                 //basically 0,0 is the centre of the screen and texture and distances are in pixels, so we need to transform the coordinates a bit
-                left: (self.settings.x - target_width as i32 /2 + fb_w as i32/2) as u32,
-                bottom: (self.settings.y - target_height as i32/2 + fb_h as i32/2) as u32,
+                left: target_x as u32,
+                bottom: target_y as u32,
                 width: target_width as i32,
                 height: target_height as i32},
             glium::uniforms::MagnifySamplerFilter::Linear);
