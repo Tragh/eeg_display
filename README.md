@@ -8,3 +8,6 @@ git clone https://github.com/Tragh/spectrum_analyser.git
 cd spectrum_analyser
 
 cargo run --release
+
+This project uses PortAudio and will bind to whatever local version of PortAudio you have. You'll need to install PortAudio yourself before this project will build.
+
