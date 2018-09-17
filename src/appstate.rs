@@ -118,6 +118,7 @@ pub enum GuiDisplay{
 pub struct GuiData{
     pub gui_display: GuiDisplay,
     pub file_selection: Option<std::path::PathBuf>,
+    pub cursor_xy: (f32,f32),
 }
 
 pub struct FilterData{

@@ -65,7 +65,8 @@ pub fn main() {
         filter_data: FilterData::default(),
         gui_data: GuiData{
             gui_display: GuiDisplay::FileOpen,
-            file_selection: None},
+            file_selection: None,
+            cursor_xy: (0.0,0.0)},
         waveform_drawers: Vec::<WaveformDrawer>::new(),
         app_data: std::sync::Arc::new(std::sync::Mutex::new(AppData{
             data_source: appstate::DataSource::NoSource,
@@ -120,6 +121,11 @@ pub fn main() {
                         },
                         ..
                     } => break 'main,
+
+                    glium::glutin::WindowEvent::CursorMoved{ position, .. } => {
+                        app.gui_data.cursor_xy=(position.x as f32,position.y as f32);
+                    }
+
                     _ => (),
                 },
                 _ => (),
@@ -147,9 +153,6 @@ pub fn main() {
             renderer.fill(&display, primitives, &image_map);
         }
         target.clear_color(0.0, 0.0, 0.0, 1.0);
-        renderer.draw(&display, &mut target, &image_map).unwrap();
-
-
             //###### MY DRAWING GOES HERE ######
 
             //gliumtexdraw.draw(&mut target,&textures[i as usize],0.0,wy(400.0-250.0*i as f64),wx(1600.0),wy(192.0));
@@ -160,6 +163,7 @@ pub fn main() {
             }
 
             //###### MY DRAWING ENDS HERE ######
+        renderer.draw(&display, &mut target, &image_map).unwrap();
         target.finish().unwrap();
 
         event_loop.needs_update(); //force update

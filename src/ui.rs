@@ -21,6 +21,8 @@ widget_ids!{
         sldier_amplification,
         toggle_manamp,
         drop_down_dft_window_shape,
+        freq_line,
+        freq_display,
     }
 }
 pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Display, app: &mut AppState<'b>){
@@ -37,6 +39,8 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
     let win_h = ui.win_h;
     let X = |x: f64| x*win_w/100.0;
     let Y = |x: f64| x*win_h/100.0;
+    let iX = |x: f32| x/win_w as f32*100.0;
+    let iY = |x: f32| x/win_h as f32*100.0;
 
     /* let (fb_w,fb_h) = display.get_framebuffer_dimensions();
     let fbX = |x: f64| x*fb_w as f64/100.0;
@@ -223,6 +227,26 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
                 .down(Y(5.0))
                 .set(ids.drop_down_dft_window_shape, ui)
                 {fd.window_shape = drop as i32;}
+
+            for wfd in &app.waveform_drawers {
+                let x = iX(app.gui_data.cursor_xy.0);
+                let y = iY(app.gui_data.cursor_xy.1);
+                if  (x - wfd.settings.x - 50.0).abs() < wfd.settings.width/2.0 &&
+                    (y - wfd.settings.y - 50.0).abs() < wfd.settings.height/2.0 {
+                        //hf is how far above the bottom of the spectrum is the mouse as a proportion of the height of the spectrum.
+                        let hf:f32 = 0.5 - (y - wfd.settings.y - 50.0)/ wfd.settings.height;
+                        let freq:f32 = hf * wfd.settings.dtft_display_samples as f32 * pastuff::PA_SAMPLE_RATE as f32 / wfd.settings.dtft_samples as f32;
+                        let freqs = format!("{:.2}", freq) + " Hz";
+                        widget::Line::centred([0.0,0.0], [X(wfd.settings.width as f64),0.0])
+                        .x_y(X(wfd.settings.x as f64),Y(50.0 - y as f64))
+                        .set(ids.freq_line, ui);
+                        widget::Text::new(&freqs)
+                        .y(Y(50.0 - y as f64))
+                        .align_left()
+                        .set(ids.freq_display, ui);
+                    }
+
+            }
 
         }
         _=>()

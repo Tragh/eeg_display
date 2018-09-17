@@ -47,7 +47,7 @@ pub struct WaveformDrawerSettings {
 
 #[allow(dead_code)]
 pub struct WaveformDrawer<'a> {
-    settings: WaveformDrawerSettings,
+    pub settings: WaveformDrawerSettings,
     rendered_ticks: u64,
 //    image: Option<City2D>,
     vstrips: Vec<VStrip>,
