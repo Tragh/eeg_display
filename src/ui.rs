@@ -23,6 +23,7 @@ widget_ids!{
         drop_down_dft_window_shape,
         freq_line,
         freq_display,
+        freq_display_bg,
     }
 }
 pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Display, app: &mut AppState<'b>){
@@ -240,10 +241,12 @@ pub fn gui<'b,'a>(ref mut ui: conrod::UiCell, ids: &Ids, display: &'b glium::Dis
                         widget::Line::centred([0.0,0.0], [X(wfd.settings.width as f64),0.0])
                         .x_y(X(wfd.settings.x as f64),Y(50.0 - y as f64))
                         .set(ids.freq_line, ui);
-                        widget::Text::new(&freqs)
+                        let t = widget::Text::new(&freqs)
                         .y(Y(50.0 - y as f64))
-                        .align_left()
-                        .set(ids.freq_display, ui);
+                        .align_left_of(ids.freq_line)
+                        .align_middle_y_of(ids.freq_line);
+                        widget::Rectangle::fill([t.get_w(ui).unwrap()*1.05, t.get_h(ui).unwrap()*1.1]).align_left_of(ids.freq_line).y_relative_to(ids.freq_line,-2.0).set(ids.freq_display_bg, ui);
+                        t.set(ids.freq_display, ui);
                     }
 
             }

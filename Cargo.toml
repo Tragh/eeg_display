@@ -1,6 +1,6 @@
 [package]
 name = "spectrum_analyser"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Tragh <mikemth@gmail.com>"]
 
 [dependencies]
